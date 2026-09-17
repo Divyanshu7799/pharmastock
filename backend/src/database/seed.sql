@@ -2,6 +2,7 @@
 USE pharmastock;
 
 -- Clean existing data
+DELETE FROM outbox;
 DELETE FROM dispensing_items;
 DELETE FROM dispensing_records;
 DELETE FROM batches;
@@ -9,6 +10,7 @@ DELETE FROM medicines;
 DELETE FROM users;
 
 -- Reset Auto-Increment
+ALTER TABLE outbox AUTO_INCREMENT = 1;
 ALTER TABLE dispensing_items AUTO_INCREMENT = 1;
 ALTER TABLE dispensing_records AUTO_INCREMENT = 1;
 ALTER TABLE batches AUTO_INCREMENT = 1;

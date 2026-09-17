@@ -1,5 +1,6 @@
 const { pool } = require('../config/db');
 const dispensingRepo = require('../repositories/dispensingRepository');
+const notificationService = require('./notificationService');
 
 /**
  * Validates whether a value is a strictly positive integer.
@@ -108,7 +109,23 @@ async function dispenseMedicine({ userId, medicineId, quantity }) {
       });
     }
 
-    // 10. Commit transaction
+    // 10. Level 3 / T1: Check remaining sellable stock and trigger reorder alert if below threshold
+    const [stockRows] = await connection.execute(`
+      SELECT COALESCE(SUM(quantity), 0) AS remainingSellableStock
+      FROM batches
+      WHERE medicine_id = ?
+        AND status = 'ACTIVE'
+        AND quantity > 0
+        AND expiry_date >= CURDATE()
+    `, [medId]);
+    const remainingSellableStock = Number(stockRows[0].remainingSellableStock);
+
+    const alertResult = await notificationService.checkAndTriggerReorderAlert(connection, {
+      medicineId: medId,
+      remainingSellableStock,
+    });
+
+    // 11. Commit transaction
     await connection.commit();
 
     return {
@@ -117,6 +134,8 @@ async function dispenseMedicine({ userId, medicineId, quantity }) {
       medicineName: medicine.name,
       requestedQuantity: reqQty,
       dispensedQuantity: reqQty,
+      remainingSellableStock,
+      reorderAlert: alertResult,
       dispensedAt: new Date().toISOString(),
       items: consumedItems,
     };

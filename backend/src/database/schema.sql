@@ -8,6 +8,7 @@ CREATE DATABASE IF NOT EXISTS pharmastock
 USE pharmastock;
 
 -- Drop dependent tables in reverse order for clean recreation
+DROP TABLE IF EXISTS outbox;
 DROP TABLE IF EXISTS dispensing_items;
 DROP TABLE IF EXISTS dispensing_records;
 DROP TABLE IF EXISTS batches;
@@ -29,8 +30,10 @@ CREATE TABLE medicines (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT,
+  reorder_threshold INT NOT NULL DEFAULT 10,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT chk_reorder_threshold CHECK (reorder_threshold >= 0),
   INDEX idx_medicines_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -80,4 +83,20 @@ CREATE TABLE dispensing_items (
   CONSTRAINT fk_items_batch FOREIGN KEY (batch_id) 
     REFERENCES batches(id),
   INDEX idx_dispensing_items_batch_id (batch_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 6. Outbox Notification table (Twist Level 3 / T1)
+CREATE TABLE outbox (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  medicine_id INT NOT NULL,
+  event_type VARCHAR(100) NOT NULL DEFAULT 'REORDER_ALERT',
+  message TEXT NOT NULL,
+  payload JSON,
+  status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_outbox_medicine FOREIGN KEY (medicine_id) 
+    REFERENCES medicines(id) ON DELETE CASCADE,
+  INDEX idx_outbox_medicine_status (medicine_id, status),
+  INDEX idx_outbox_status (status),
+  INDEX idx_outbox_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

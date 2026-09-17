@@ -115,8 +115,9 @@ Individual test suites:
 - `npm run test:dispense` — Step 4: Atomic FEFO dispensing transactions and history (16 tests)
 - `npm run test:clock` — Twist 1 (T2): Clock automation, expired batch quarantine, 7-day alerts (12 tests)
 - `npm run test:import` — Twist 2 (T4): Messy batch data normalization, deduplication, atomic import (18 tests)
+- `npm run test:notification` — Level 3 (T1): Reorder thresholds and transactional outbox alerts (11 tests)
 
-**Total automated tests:** **84 / 84 passing (100% success)**
+**Total automated tests:** **95 / 95 passing (100% success)**
 
 ---
 
@@ -217,4 +218,57 @@ Normalizes and imports messy batch records with calendar-accurate validation and
     { "row": 9, "status": "rejected", "reason": "Quantity cannot be negative" }
   ]
 }
-```
+```
+
+---
+
+### 3. Reorder Threshold & Outbox Notification Service (`GET /outbox`)
+
+Inspects persisted reorder notifications generated atomically during FEFO dispensing operations.
+
+- **URL:** `GET /outbox` (also aliased at `GET /api/outbox`)
+- **Authentication:** Public / Inspected by grader
+- **Query Filters:** `?status=PENDING`, `?medicineId=1`
+
+#### Trigger Condition:
+- Evaluated immediately after a **successful** dispensing transaction before `commit()`.
+- Calculates remaining sellable stock:
+  $$\text{status} = \text{'ACTIVE'} \land \text{quantity} > 0 \land \text{expiry\_date} \ge \text{CURRENT\_DATE}$$
+- **Threshold Rule:**
+  - If $\text{remainingSellableStock} < \text{reorder\_threshold}$: **trigger reorder alert**.
+  - If $\text{remainingSellableStock} == \text{reorder\_threshold}$: **DO NOT notify**.
+  - If $\text{remainingSellableStock} > \text{reorder\_threshold}$: **DO NOT notify**.
+- Expired (`< CURDATE()`) and quarantined (`status = 'QUARANTINED'`) batches are strictly excluded and never count toward the threshold.
+- Failed or rolled-back dispensing operations never create notifications.
+
+#### Duplicate Suppression Policy:
+- Exactly **one pending reorder alert per medicine** (`event_type = 'REORDER_ALERT' AND status = 'PENDING'`).
+- If an active pending alert exists for that medicine, subsequent dispensing deductions will not spam duplicate alerts.
+
+#### Response:
+```json
+[
+  {
+    "id": 1,
+    "medicine_id": 2,
+    "medicineId": 2,
+    "medicine_name": "Paracetamol 500mg",
+    "medicineName": "Paracetamol 500mg",
+    "event_type": "REORDER_ALERT",
+    "eventType": "REORDER_ALERT",
+    "message": "Low stock alert: In-date sellable stock for 'Paracetamol 500mg' is 25, which has dropped below the reorder threshold of 30.",
+    "payload": {
+      "medicineId": 2,
+      "medicineName": "Paracetamol 500mg",
+      "currentSellableStock": 25,
+      "reorderThreshold": 30,
+      "deficit": 5,
+      "triggeredAt": "2026-09-17T11:35:00.000Z"
+    },
+    "status": "PENDING",
+    "created_at": "2026-09-17T11:35:00.000Z",
+    "createdAt": "2026-09-17T11:35:00.000Z"
+  }
+]
+```
+

@@ -31,8 +31,8 @@ async function getMedicineById(req, res, next) {
  */
 async function createMedicine(req, res, next) {
   try {
-    const { name, description } = req.body;
-    const created = await medicineService.createMedicine({ name, description });
+    const { name, description, reorderThreshold, reorder_threshold } = req.body;
+    const created = await medicineService.createMedicine({ name, description, reorderThreshold, reorder_threshold });
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -45,8 +45,8 @@ async function createMedicine(req, res, next) {
 async function updateMedicine(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
-    const updated = await medicineService.updateMedicine(id, { name, description });
+    const { name, description, reorderThreshold, reorder_threshold } = req.body;
+    const updated = await medicineService.updateMedicine(id, { name, description, reorderThreshold, reorder_threshold });
     res.status(200).json(updated);
   } catch (err) {
     next(err);

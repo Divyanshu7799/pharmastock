@@ -8,6 +8,7 @@ const batchRoutes = require('./routes/batchRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const dispensingRoutes = require('./routes/dispensingRoutes');
 const clockController = require('./controllers/clockController');
+const notificationController = require('./controllers/notificationController');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -37,6 +38,10 @@ app.get('/api/health', (req, res) => {
 // Twist 1 (T2): Simulated Daily Maintenance Automation Endpoint
 app.post('/clock', clockController.processClock);
 app.post('/api/clock', clockController.processClock);
+
+// Level 3 / T1: Outbox Inspection Endpoint
+app.get('/outbox', notificationController.getOutbox);
+app.get('/api/outbox', notificationController.getOutbox);
 
 // Mount Feature API Routes
 app.use('/api/auth', authRoutes);

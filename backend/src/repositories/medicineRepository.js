@@ -11,18 +11,28 @@ const ALLOWED_SORT_FIELDS = {
  * @param {Object} params
  * @param {string} params.name
  * @param {string} [params.description]
+ * @param {number} [params.reorderThreshold=10]
  * @returns {Promise<Object>}
  */
-async function createMedicine({ name, description = null }) {
+async function createMedicine({ name, description = null, reorderThreshold = 10 }) {
+  const threshold = (reorderThreshold !== undefined && reorderThreshold !== null && !isNaN(Number(reorderThreshold)))
+    ? Math.max(0, parseInt(reorderThreshold, 10))
+    : 10;
   const query = `
-    INSERT INTO medicines (name, description)
-    VALUES (?, ?)
+    INSERT INTO medicines (name, description, reorder_threshold)
+    VALUES (?, ?, ?)
   `;
-  const [result] = await pool.execute(query, [name.trim(), description ? description.trim() : null]);
+  const [result] = await pool.execute(query, [
+    name.trim(),
+    description ? description.trim() : null,
+    threshold,
+  ]);
   return {
     id: result.insertId,
     name: name.trim(),
     description: description ? description.trim() : null,
+    reorderThreshold: threshold,
+    reorder_threshold: threshold,
   };
 }
 
@@ -79,6 +89,7 @@ async function getMedicines({ search = '', page = 1, limit = 10, sortBy = 'name'
       m.id,
       m.name,
       m.description,
+      m.reorder_threshold AS reorderThreshold,
       m.created_at AS createdAt,
       m.updated_at AS updatedAt,
       COALESCE(SUM(CASE WHEN b.quantity > 0 AND b.expiry_date >= CURDATE() AND b.status = 'ACTIVE' THEN b.quantity ELSE 0 END), 0) AS sellableStock
@@ -95,6 +106,8 @@ async function getMedicines({ search = '', page = 1, limit = 10, sortBy = 'name'
     id: row.id,
     name: row.name,
     description: row.description,
+    reorderThreshold: Number(row.reorderThreshold ?? 10),
+    reorder_threshold: Number(row.reorderThreshold ?? 10),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     sellableStock: Number(row.sellableStock),
@@ -118,12 +131,18 @@ async function getMedicines({ search = '', page = 1, limit = 10, sortBy = 'name'
  */
 async function getMedicineById(id) {
   const query = `
-    SELECT id, name, description, created_at AS createdAt, updated_at AS updatedAt
+    SELECT id, name, description, reorder_threshold AS reorderThreshold, created_at AS createdAt, updated_at AS updatedAt
     FROM medicines
     WHERE id = ?
   `;
   const [rows] = await pool.execute(query, [id]);
-  return rows.length > 0 ? rows[0] : null;
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    ...row,
+    reorderThreshold: Number(row.reorderThreshold ?? 10),
+    reorder_threshold: Number(row.reorderThreshold ?? 10),
+  };
 }
 
 /**
@@ -132,15 +151,28 @@ async function getMedicineById(id) {
  * @param {Object} updates
  * @param {string} updates.name
  * @param {string} [updates.description]
+ * @param {number} [updates.reorderThreshold]
  * @returns {Promise<Object|null>}
  */
-async function updateMedicine(id, { name, description = null }) {
-  const query = `
-    UPDATE medicines
-    SET name = ?, description = ?
-    WHERE id = ?
-  `;
-  const [result] = await pool.execute(query, [name.trim(), description ? description.trim() : null, id]);
+async function updateMedicine(id, { name, description = null, reorderThreshold }) {
+  let query, params;
+  if (reorderThreshold !== undefined && reorderThreshold !== null && !isNaN(Number(reorderThreshold))) {
+    const threshold = Math.max(0, parseInt(reorderThreshold, 10));
+    query = `
+      UPDATE medicines
+      SET name = ?, description = ?, reorder_threshold = ?
+      WHERE id = ?
+    `;
+    params = [name.trim(), description ? description.trim() : null, threshold, id];
+  } else {
+    query = `
+      UPDATE medicines
+      SET name = ?, description = ?
+      WHERE id = ?
+    `;
+    params = [name.trim(), description ? description.trim() : null, id];
+  }
+  const [result] = await pool.execute(query, params);
   if (result.affectedRows === 0) return null;
   return getMedicineById(id);
 }

@@ -8,16 +8,29 @@ const batchRepo = require('../repositories/batchRepository');
  * @param {string} [params.description]
  * @returns {Promise<Object>}
  */
-async function createMedicine({ name, description }) {
+async function createMedicine({ name, description, reorderThreshold, reorder_threshold }) {
   if (!name || !name.trim()) {
     const error = new Error('Medicine name is required and cannot be blank');
     error.status = 400;
     throw error;
   }
 
+  const thresholdInput = reorderThreshold !== undefined ? reorderThreshold : reorder_threshold;
+  let threshold = 10;
+  if (thresholdInput !== undefined && thresholdInput !== null) {
+    const parsed = Number(thresholdInput);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      const error = new Error('Reorder threshold must be a non-negative integer (0 or greater)');
+      error.status = 400;
+      throw error;
+    }
+    threshold = parsed;
+  }
+
   return medicineRepo.createMedicine({
     name: name.trim(),
     description: description ? description.trim() : null,
+    reorderThreshold: threshold,
   });
 }
 
@@ -74,7 +87,7 @@ async function getMedicineById(id) {
  * @param {string} [params.description]
  * @returns {Promise<Object>}
  */
-async function updateMedicine(id, { name, description }) {
+async function updateMedicine(id, { name, description, reorderThreshold, reorder_threshold }) {
   const medicineId = parseInt(id, 10);
   if (isNaN(medicineId) || medicineId <= 0) {
     const error = new Error('Invalid medicine ID');
@@ -95,9 +108,22 @@ async function updateMedicine(id, { name, description }) {
     throw error;
   }
 
+  const thresholdInput = reorderThreshold !== undefined ? reorderThreshold : reorder_threshold;
+  let parsedThreshold;
+  if (thresholdInput !== undefined && thresholdInput !== null) {
+    const parsed = Number(thresholdInput);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      const error = new Error('Reorder threshold must be a non-negative integer (0 or greater)');
+      error.status = 400;
+      throw error;
+    }
+    parsedThreshold = parsed;
+  }
+
   return medicineRepo.updateMedicine(medicineId, {
     name: name.trim(),
     description: description !== undefined ? (description ? description.trim() : null) : existing.description,
+    reorderThreshold: parsedThreshold,
   });
 }
 
