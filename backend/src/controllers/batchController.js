@@ -1,4 +1,5 @@
 const batchService = require('../services/batchService');
+const batchImportService = require('../services/batchImportService');
 
 /**
  * Creates a batch for a given medicine.
@@ -59,9 +60,23 @@ async function deleteBatch(req, res, next) {
   }
 }
 
+/**
+ * Imports messy batch records with normalization, deduplication, and transactional storage.
+ */
+async function importBatches(req, res, next) {
+  try {
+    const { rows } = req.body;
+    const result = await batchImportService.importBatches(rows);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createBatch,
   getBatchesByMedicine,
   updateBatch,
   deleteBatch,
+  importBatches,
 };

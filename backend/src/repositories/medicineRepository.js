@@ -81,7 +81,7 @@ async function getMedicines({ search = '', page = 1, limit = 10, sortBy = 'name'
       m.description,
       m.created_at AS createdAt,
       m.updated_at AS updatedAt,
-      COALESCE(SUM(CASE WHEN b.quantity > 0 AND b.expiry_date >= CURDATE() THEN b.quantity ELSE 0 END), 0) AS sellableStock
+      COALESCE(SUM(CASE WHEN b.quantity > 0 AND b.expiry_date >= CURDATE() AND b.status = 'ACTIVE' THEN b.quantity ELSE 0 END), 0) AS sellableStock
     FROM medicines m
     LEFT JOIN batches b ON m.id = b.medicine_id
     WHERE m.name LIKE ?

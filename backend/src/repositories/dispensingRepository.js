@@ -23,6 +23,7 @@ async function getEligibleBatchesForUpdate(connection, medicineId) {
     WHERE medicine_id = ?
       AND quantity > 0
       AND expiry_date >= CURDATE()
+      AND status = 'ACTIVE'
     ORDER BY expiry_date ASC, id ASC
     FOR UPDATE
   `;

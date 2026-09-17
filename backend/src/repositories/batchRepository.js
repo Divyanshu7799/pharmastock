@@ -6,6 +6,7 @@ const { pool } = require('../config/db');
  * @returns {string} 'expired' | 'expiring_soon' | 'out_of_stock' | 'valid'
  */
 function deriveBatchStatus(batch) {
+  if (batch.status === 'QUARANTINED') return 'quarantined';
   const isExpired = Boolean(batch.isExpired);
   const qty = Number(batch.quantity);
   const isExpiringSoon = Boolean(batch.isExpiringSoon);
@@ -23,18 +24,20 @@ function deriveBatchStatus(batch) {
  * @param {string} params.batchNumber
  * @param {number} params.quantity
  * @param {string|Date} params.expiryDate
+ * @param {string} [params.status='ACTIVE']
  * @returns {Promise<Object>}
  */
-async function createBatch({ medicineId, batchNumber, quantity, expiryDate }) {
+async function createBatch({ medicineId, batchNumber, quantity, expiryDate, status = 'ACTIVE' }) {
   const query = `
-    INSERT INTO batches (medicine_id, batch_number, quantity, expiry_date)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO batches (medicine_id, batch_number, quantity, expiry_date, status)
+    VALUES (?, ?, ?, ?, ?)
   `;
   const [result] = await pool.execute(query, [
     medicineId,
     batchNumber.trim(),
     Number(quantity),
     expiryDate,
+    status || 'ACTIVE',
   ]);
 
   return {
@@ -43,6 +46,7 @@ async function createBatch({ medicineId, batchNumber, quantity, expiryDate }) {
     batchNumber: batchNumber.trim(),
     quantity: Number(quantity),
     expiryDate,
+    status: status || 'ACTIVE',
   };
 }
 
@@ -60,6 +64,7 @@ async function getBatchesByMedicineId(medicineId) {
       batch_number AS batchNumber,
       quantity,
       DATE_FORMAT(expiry_date, '%Y-%m-%d') AS expiryDate,
+      status,
       (expiry_date < CURDATE()) AS isExpired,
       (expiry_date >= CURDATE() AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND quantity > 0) AS isExpiringSoon,
       created_at AS createdAt,
@@ -76,8 +81,9 @@ async function getBatchesByMedicineId(medicineId) {
     batchNumber: row.batchNumber,
     quantity: row.quantity,
     expiryDate: row.expiryDate,
+    status: row.status || 'ACTIVE',
     isExpired: Boolean(row.isExpired),
-    status: deriveBatchStatus(row),
+    derivedStatus: deriveBatchStatus(row),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }));
@@ -87,6 +93,7 @@ async function getBatchesByMedicineId(medicineId) {
  * Calculates sellable stock for a medicine:
  * Excludes expired batches (expiry_date < CURDATE())
  * Excludes zero-quantity batches (quantity <= 0)
+ * Excludes quarantined batches (status != 'ACTIVE')
  * @param {number} medicineId
  * @returns {Promise<number>}
  */
@@ -97,6 +104,7 @@ async function getSellableStock(medicineId) {
     WHERE medicine_id = ?
       AND quantity > 0
       AND expiry_date >= CURDATE()
+      AND status = 'ACTIVE'
   `;
   const [rows] = await pool.execute(query, [medicineId]);
   return Number(rows[0].sellableStock);
@@ -115,6 +123,7 @@ async function getBatchById(id) {
       batch_number AS batchNumber,
       quantity,
       DATE_FORMAT(expiry_date, '%Y-%m-%d') AS expiryDate,
+      status,
       (expiry_date < CURDATE()) AS isExpired,
       (expiry_date >= CURDATE() AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND quantity > 0) AS isExpiringSoon,
       created_at AS createdAt,
@@ -131,8 +140,9 @@ async function getBatchById(id) {
     batchNumber: row.batchNumber,
     quantity: row.quantity,
     expiryDate: row.expiryDate,
+    status: row.status || 'ACTIVE',
     isExpired: Boolean(row.isExpired),
-    status: deriveBatchStatus(row),
+    derivedStatus: deriveBatchStatus(row),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -205,6 +215,7 @@ async function getExpiringBatches(days = 30) {
     FROM batches b
     INNER JOIN medicines m ON b.medicine_id = m.id
     WHERE b.quantity > 0
+      AND b.status = 'ACTIVE'
       AND b.expiry_date >= CURDATE()
       AND b.expiry_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
     ORDER BY b.expiry_date ASC, b.id ASC

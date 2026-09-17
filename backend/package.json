@@ -11,7 +11,9 @@
     "db:test": "node src/database/verifyDb.js",
     "test:api": "node src/tests/apiTest.js",
     "test:dispense": "node src/tests/dispensingTest.js",
-    "test:all": "node src/database/verifyDb.js && node src/tests/apiTest.js && node src/tests/dispensingTest.js"
+    "test:clock": "node src/tests/clockTest.js",
+    "test:import": "node src/tests/importTest.js",
+    "test:all": "node src/database/verifyDb.js && node src/tests/apiTest.js && node src/tests/dispensingTest.js && node src/tests/clockTest.js && node src/tests/importTest.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

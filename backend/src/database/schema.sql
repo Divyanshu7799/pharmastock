@@ -41,14 +41,17 @@ CREATE TABLE batches (
   batch_number VARCHAR(100) NOT NULL,
   quantity INT NOT NULL,
   expiry_date DATE NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT chk_batch_quantity CHECK (quantity >= 0),
+  CONSTRAINT chk_batch_status CHECK (status IN ('ACTIVE', 'QUARANTINED')),
   CONSTRAINT fk_batches_medicine FOREIGN KEY (medicine_id) 
     REFERENCES medicines(id) ON DELETE CASCADE,
   CONSTRAINT uq_medicine_batch UNIQUE (medicine_id, batch_number),
   INDEX idx_batches_medicine_id (medicine_id),
-  INDEX idx_batches_expiry_date (expiry_date)
+  INDEX idx_batches_expiry_date (expiry_date),
+  INDEX idx_batches_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. Dispensing Records table

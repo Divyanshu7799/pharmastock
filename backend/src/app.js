@@ -7,6 +7,7 @@ const medicineRoutes = require('./routes/medicineRoutes');
 const batchRoutes = require('./routes/batchRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const dispensingRoutes = require('./routes/dispensingRoutes');
+const clockController = require('./controllers/clockController');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -32,6 +33,10 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
   });
 });
+
+// Twist 1 (T2): Simulated Daily Maintenance Automation Endpoint
+app.post('/clock', clockController.processClock);
+app.post('/api/clock', clockController.processClock);
 
 // Mount Feature API Routes
 app.use('/api/auth', authRoutes);
