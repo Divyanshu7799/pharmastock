@@ -1,84 +1,86 @@
-import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { Navbar } from './components/Navbar';
+import { ProtectedRoute } from './components/ProtectedRoute';
+
+import { LandingPage } from './pages/LandingPage';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { InventoryPage } from './pages/InventoryPage';
+import { MedicineDetailPage } from './pages/MedicineDetailPage';
+import { DispensePage } from './pages/DispensePage';
+import { HistoryPage } from './pages/HistoryPage';
+
 import './App.css';
 
 function App() {
-  const [healthStatus, setHealthStatus] = useState({
-    loading: true,
-    data: null,
-    error: null,
-  });
-
-  const checkHealth = async () => {
-    setHealthStatus({ loading: true, data: null, error: null });
-    try {
-      const response = await fetch('http://localhost:5000/api/health');
-      if (!response.ok) {
-        throw new Error(`Server returned HTTP ${response.status}`);
-      }
-      const data = await response.json();
-      setHealthStatus({ loading: false, data, error: null });
-    } catch (err) {
-      setHealthStatus({ loading: false, data: null, error: err.message });
-    }
-  };
-
-  useEffect(() => {
-    checkHealth();
-  }, []);
-
   return (
-    <div className="container">
-      <header className="header">
-        <div className="logo-badge">Rx</div>
-        <h1>PharmaStock</h1>
-        <p className="subtitle">Pharmacy Inventory Management System</p>
-      </header>
+    <BrowserRouter>
+      <AuthProvider>
+        <div className="app-root">
+          <Navbar />
+          <main className="app-main">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-      <main className="card">
-        <h2>Development Setup Verification (Step 1)</h2>
-        <div className="status-badge status-ok">
-          <span className="indicator active"></span>
-          Frontend is running (React + Vite)
-        </div>
+              {/* Protected Authenticated Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory"
+                element={
+                  <ProtectedRoute>
+                    <InventoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory/:id"
+                element={
+                  <ProtectedRoute>
+                    <MedicineDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dispense"
+                element={
+                  <ProtectedRoute>
+                    <DispensePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/history"
+                element={
+                  <ProtectedRoute>
+                    <HistoryPage />
+                  </ProtectedRoute>
+                }
+              />
 
-        <div className="health-section">
-          <h3>Backend Health Check (GET /api/health)</h3>
-          {healthStatus.loading && (
-            <p className="status-text muted">Connecting to backend at http://localhost:5000/api/health...</p>
-          )}
-          {!healthStatus.loading && healthStatus.data && (
-            <div className="status-badge status-ok">
-              <span className="indicator active"></span>
-              Backend Response: <code>{JSON.stringify(healthStatus.data)}</code>
+              {/* Catch-all fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+          <footer className="app-footer">
+            <div className="footer-content">
+              <span>PharmaStock &copy; {new Date().getFullYear()} &mdash; Intelligent Pharmacy Inventory & FEFO Dispensing</span>
             </div>
-          )}
-          {!healthStatus.loading && healthStatus.error && (
-            <div className="status-badge status-error">
-              <span className="indicator inactive"></span>
-              Backend Offline or Unreachable: {healthStatus.error}
-            </div>
-          )}
-
-          <button className="btn-refresh" onClick={checkHealth}>
-            Recheck Backend Health
-          </button>
+          </footer>
         </div>
-
-        <div className="info-box">
-          <h4>Project Scope - Step 1 Complete</h4>
-          <ul>
-            <li>Clean <code>/frontend</code> and <code>/backend</code> architecture</li>
-            <li>Express server with <code>GET /api/health</code> endpoint</li>
-            <li>Environment variables managed via <code>.env</code></li>
-            <li>Git ignore rules configured for secrets and build artifacts</li>
-          </ul>
-        </div>
-      </main>
-
-      <footer className="footer">
-        PharmaStock &copy; {new Date().getFullYear()} - Timed Assessment Project
-      </footer>
-    </div>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
