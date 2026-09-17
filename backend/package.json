@@ -9,7 +9,9 @@
     "dev": "node --watch src/server.js",
     "db:init": "node src/database/initDb.js",
     "db:test": "node src/database/verifyDb.js",
-    "test:api": "node src/tests/apiTest.js"
+    "test:api": "node src/tests/apiTest.js",
+    "test:dispense": "node src/tests/dispensingTest.js",
+    "test:all": "node src/database/verifyDb.js && node src/tests/apiTest.js && node src/tests/dispensingTest.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -5,6 +5,7 @@ const authRoutes = require('./routes/authRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
 const batchRoutes = require('./routes/batchRoutes');
 const alertRoutes = require('./routes/alertRoutes');
+const dispensingRoutes = require('./routes/dispensingRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/api', dispensingRoutes);
 
 // 404 Handler for undefined routes
 app.use((req, res, next) => {

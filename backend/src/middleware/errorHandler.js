@@ -30,9 +30,17 @@ function errorHandler(err, req, res, next) {
     console.error(`[Error] ${req.method} ${req.originalUrl}:`, err);
   }
 
-  res.status(statusCode).json({
+  const responsePayload = {
+    message,
     error: message,
-  });
+  };
+
+  if (err.requestedQuantity !== undefined && err.availableQuantity !== undefined) {
+    responsePayload.requestedQuantity = err.requestedQuantity;
+    responsePayload.availableQuantity = err.availableQuantity;
+  }
+
+  res.status(statusCode).json(responsePayload);
 }
 
 module.exports = errorHandler;
