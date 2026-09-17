@@ -33,7 +33,8 @@ async function runVerification() {
 
     // Test 2: Read medicines
     console.log('\n--- Test Group 2: Medicine Repository ---');
-    const medicines = await medicineRepo.getMedicines();
+    const medResult = await medicineRepo.getMedicines();
+    const medicines = Array.isArray(medResult) ? medResult : medResult.data;
     assert(Array.isArray(medicines) && medicines.length >= 4, 'Retrieve list of all medicines', `Found ${medicines.length} medicines`);
 
     const paracetamol = medicines.find(m => m.name.includes('Paracetamol'));

@@ -1,6 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 
+const authRoutes = require('./routes/authRoutes');
+const medicineRoutes = require('./routes/medicineRoutes');
+const batchRoutes = require('./routes/batchRoutes');
+const alertRoutes = require('./routes/alertRoutes');
+const errorHandler = require('./middleware/errorHandler');
+
 const app = express();
 
 // Middleware
@@ -12,12 +18,18 @@ app.use(cors({
 
 app.use(express.json());
 
-// Health Check Endpoint
+// Health Check Endpoint (Public)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
   });
 });
+
+// Mount Feature API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/medicines', medicineRoutes);
+app.use('/api/batches', batchRoutes);
+app.use('/api/alerts', alertRoutes);
 
 // 404 Handler for undefined routes
 app.use((req, res, next) => {
@@ -27,12 +39,6 @@ app.use((req, res, next) => {
 });
 
 // Centralized Error Handling Middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  const statusCode = err.status || 500;
-  res.status(statusCode).json({
-    error: err.message || 'Internal Server Error',
-  });
-});
+app.use(errorHandler);
 
 module.exports = app;
