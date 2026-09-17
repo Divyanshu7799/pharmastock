@@ -63,6 +63,31 @@ Response:
 
 ---
 
+### Database Setup & Verification
+
+1. Configure `backend/.env` with your MySQL connection credentials:
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=pharmastock
+```
+
+2. Initialize the schema and populate test seed data:
+```bash
+cd backend
+npm run db:init
+```
+
+3. Run the automated data model and FEFO verification suite:
+```bash
+cd backend
+npm run db:test
+```
+
+---
+
 ### 2. Frontend Setup
 
 ```bash
