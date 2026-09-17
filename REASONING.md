@@ -22,32 +22,54 @@ To guarantee zero ghost alerts and 100% transactional consistency, PharmaStock i
 
 ---
 
-### 3. Threshold Evaluation & Sellable Stock Definition
-The notification trigger evaluates remaining **sellable stock** strictly calculated as:
+### 3. Threshold Evaluation and Sellable Stock
 
-$$\text{sellableStock} = \sum \text{quantity} \quad \text{WHERE } \text{status} = \text{'ACTIVE'} \land \text{quantity} > 0 \land \text{expiry\_date} \ge \text{CURRENT\_DATE}$$
+The reorder check uses the same definition of sellable stock as the inventory and dispensing logic.
 
-#### Threshold Evaluation Rules:
-1. **Strict Inequality ($<$)**: An alert is generated if and only if $\text{sellableStock} < \text{reorder\_threshold}$.
-2. **Boundary Invariance**: If $\text{sellableStock} == \text{reorder\_threshold}$ or $\text{sellableStock} > \text{reorder\_threshold}$, **no alert is created**.
-3. **Quarantine & Expiry Exclusion**:
-   - Expired batches ($\text{expiry\_date} < \text{CURRENT\_DATE}$) are completely ignored.
-   - Quarantined batches ($\text{status} = \text{'QUARANTINED'}$) are completely ignored.
-   - Even if physical inventory exists in quarantined or expired batches, it does not inflate sellable stock or suppress low-stock alerts.
+A batch is considered sellable only when:
 
----
+- Its status is `ACTIVE`
+- Its quantity is greater than `0`
+- Its expiry date is today or a future date
+
+The remaining sellable stock is calculated by adding the quantities of all batches that satisfy these conditions.
+
+#### Threshold Rules
+
+1. An alert is created only when the remaining sellable stock is **less than** the medicine's reorder threshold.
+
+2. If the remaining stock is **equal to or greater than** the threshold, no alert is created.
+
+3. Expired batches are not included in the calculation.
+
+4. Quarantined batches are not included in the calculation.
+
+5. Having physical quantity in an expired or quarantined batch does not prevent a reorder alert because that quantity cannot be sold.
+
+For example, if a medicine has:
+
+- Batch A: 5 units, active and valid
+- Batch B: 20 units, expired
+- Batch C: 10 units, quarantined
+
+Only the 5 units from Batch A are considered sellable stock.
 
 ### 4. Duplicate Notification Suppression Policy
-Repeated dispensing of medication while stock remains below threshold can spam procurement channels with redundant alerts.
 
-#### Policy Design:
-- **Rule**: At most **one `PENDING` reorder alert** per medicine is permitted in the `outbox` table at any given time.
-- **Enforcement Mechanism**:
-  - Before writing to `outbox`, `hasPendingAlert(connection, medicineId, 'REORDER_ALERT')` queries for existing active alerts with `status = 'PENDING'`.
-  - If a pending alert already exists for the medicine, the new notification is suppressed.
-  - When the procurement workflow processes or acknowledges the alert (transitioning `status` away from `'PENDING'`), subsequent dispensing operations can generate a new alert if stock remains or falls below threshold.
+Repeated dispensing of a medicine while its stock remains below the threshold could create many identical reorder notifications.
 
----
+To avoid this, the system checks whether a `PENDING` reorder alert already exists for the medicine.
+
+If a pending alert already exists:
+
+- A new duplicate alert is not created.
+- The existing alert remains available for the notification system.
+
+If there is no pending alert:
+
+- A new `REORDER_ALERT` event is inserted into the outbox.
+
+This keeps the outbox from being filled with duplicate notifications for the same low-stock condition.
 
 ### 5. Outbox Schema Design
 ```sql
